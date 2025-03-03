@@ -42,15 +42,19 @@ def install_chromedriver():
 
 def setup_driver():
     try:
-        install_chromedriver()
+        # Use a predefined Chrome and ChromeDriver path (for Render compatibility)
+        chrome_path = "/usr/bin/google-chrome-stable"
+        chromedriver_path = "/usr/bin/chromedriver"
+
         options = webdriver.ChromeOptions()
+        options.binary_location = chrome_path  # Ensure the correct binary location
         options.add_argument("--headless")
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
-        
-        service = Service("/usr/bin/chromedriver")  # Adjust path if needed
+
+        service = Service(chromedriver_path)
         driver = webdriver.Chrome(service=service, options=options)
         return driver
     except Exception as e:
