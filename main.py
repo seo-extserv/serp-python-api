@@ -1,19 +1,24 @@
-from fastapi import FastAPI, Query, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends
+from pydantic import BaseModel
 import uvicorn
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+import os
 import time
 
-# Authentication Token
-API_TOKEN = "your_secure_api_token_here"
+# Get API Key from environment variable
+API_KEY = os.getenv("api-key", "default_key")
 
-def authenticate(token: str = Query(..., alias="api_token")):
-    if token != API_TOKEN:
-        raise HTTPException(status_code=401, detail="Invalid API Token")
+def authenticate(token: str = Depends()):
+    if token != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API Key")
     return token
 
 app = FastAPI()
+
+class SearchRequest(BaseModel):
+    keywords: list[str]
+    api_key: str
 
 def setup_driver():
     options = webdriver.ChromeOptions()
@@ -27,26 +32,28 @@ def setup_driver():
     driver = webdriver.Chrome(service=service, options=options)
     return driver
 
-@app.get("/search")
-def search_google(query: str, token: str = Depends(authenticate)):
+@app.post("/search")
+def search_google(request: SearchRequest):
+    if request.api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API Key")
+    
     driver = setup_driver()
+    results_dict = {}
     
     try:
-        driver.get("https://www.google.com.au/")
-        time.sleep(2)  # Let the page load
+        for keyword in request.keywords:
+            driver.get("https://www.google.com.au/")
+            time.sleep(2)  # Let the page load
 
-        search_box = driver.find_element("name", "q")
-        search_box.send_keys(query)
-        search_box.submit()
-        time.sleep(3)
-        
-        results = driver.find_elements("css selector", "h3")
-        search_results = [result.text for result in results[:5] if result.text]
+            search_box = driver.find_element("name", "q")
+            search_box.send_keys(keyword)
+            search_box.submit()
+            time.sleep(3)
+            
+            page_source = driver.page_source
+            results_dict[keyword] = page_source
     
     finally:
         driver.quit()
     
-    return {"query": query, "results": search_results}
-
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    return {"search_results": results_dict}
