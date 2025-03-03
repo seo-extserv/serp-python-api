@@ -34,8 +34,8 @@ class SearchRequest(BaseModel):
 def setup_driver():
     try:
         # Use environment variables with defaults matching your Dockerfile
-        chrome_path = os.getenv("CHROME_BIN", "/usr/bin/chromium")
-        chromedriver_path = os.getenv("CHROMEDRIVER_BIN", "/usr/bin/chromedriver")
+        chrome_path = os.getenv("CHROME_BIN")
+        chromedriver_path = os.getenv("CHROMEDRIVER_BIN")
 
         options = webdriver.ChromeOptions()
         options.binary_location = chrome_path
