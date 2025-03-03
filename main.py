@@ -5,6 +5,13 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 import os
 import time
+import logging
+import subprocess
+from fastapi.responses import JSONResponse
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Get API Key from environment variable
 API_KEY = os.getenv("api-key", "default_key")
@@ -16,32 +23,52 @@ def authenticate(token: str = Depends()):
 
 app = FastAPI()
 
+@app.get("/")
+def ping():
+    return {"message": "API is live"}
+
 class SearchRequest(BaseModel):
     keywords: list[str]
     api_key: str
 
+def install_chromedriver():
+    try:
+        logger.info("Installing latest ChromeDriver...")
+        subprocess.run("apt-get update && apt-get install -y chromium chromium-driver", shell=True, check=True)
+        logger.info("ChromeDriver installed successfully.")
+    except Exception as e:
+        logger.error(f"Error installing ChromeDriver: {str(e)}")
+        raise HTTPException(status_code=500, detail="ChromeDriver installation failed")
+
 def setup_driver():
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
-    
-    service = Service("/usr/bin/chromedriver")  # Adjust path if needed
-    driver = webdriver.Chrome(service=service, options=options)
-    return driver
+    try:
+        install_chromedriver()
+        options = webdriver.ChromeOptions()
+        options.add_argument("--headless")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
+        
+        service = Service("/usr/bin/chromedriver")  # Adjust path if needed
+        driver = webdriver.Chrome(service=service, options=options)
+        return driver
+    except Exception as e:
+        logger.error(f"Error setting up Selenium driver: {str(e)}")
+        raise HTTPException(status_code=500, detail="Selenium setup failed")
 
 @app.post("/search")
 def search_google(request: SearchRequest):
     if request.api_key != API_KEY:
+        logger.warning("Unauthorized API Key attempt")
         raise HTTPException(status_code=401, detail="Invalid API Key")
     
     driver = setup_driver()
     results_dict = {}
-    
+
     try:
         for keyword in request.keywords:
+            logger.info(f"Searching Google for: {keyword}")
             driver.get("https://www.google.com.au/")
             time.sleep(2)  # Let the page load
 
@@ -49,10 +76,14 @@ def search_google(request: SearchRequest):
             search_box.send_keys(keyword)
             search_box.submit()
             time.sleep(3)
-            
+
             page_source = driver.page_source
             results_dict[keyword] = page_source
     
+    except Exception as e:
+        logger.error(f"Error during search: {str(e)}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
     finally:
         driver.quit()
     
