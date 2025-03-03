@@ -33,12 +33,12 @@ class SearchRequest(BaseModel):
 
 def setup_driver():
     try:
-        # Use a predefined Chrome and ChromeDriver path (for Render compatibility)
-        chrome_path = "/usr/bin/chromium"
-        chromedriver_path = "/usr/bin/chromedriver"
-        
+        # Use environment variables with defaults matching your Dockerfile
+        chrome_path = os.getenv("CHROME_BIN", "/usr/bin/chromium")
+        chromedriver_path = os.getenv("CHROMEDRIVER_BIN", "/usr/bin/chromedriver")
+
         options = webdriver.ChromeOptions()
-        options.binary_location = chrome_path  # Ensure the correct binary location
+        options.binary_location = chrome_path
         options.add_argument("--headless")
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
@@ -51,7 +51,7 @@ def setup_driver():
     except Exception as e:
         logger.error(f"Error setting up Selenium driver: {str(e)}")
         raise HTTPException(status_code=500, detail="Selenium setup failed")
-
+        
 @app.post("/search")
 def search_google(request: SearchRequest):
     if request.api_key != API_KEY:
