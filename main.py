@@ -31,21 +31,12 @@ class SearchRequest(BaseModel):
     keywords: list[str]
     api_key: str
 
-def install_chromedriver():
-    try:
-        logger.info("Installing latest ChromeDriver...")
-        subprocess.run("apt-get update && apt-get install -y chromium chromium-driver", shell=True, check=True)
-        logger.info("ChromeDriver installed successfully.")
-    except Exception as e:
-        logger.error(f"Error installing ChromeDriver: {str(e)}")
-        raise HTTPException(status_code=500, detail="ChromeDriver installation failed")
-
 def setup_driver():
     try:
         # Use a predefined Chrome and ChromeDriver path (for Render compatibility)
-        chrome_path = "/usr/bin/google-chrome-stable"
+        chrome_path = "/usr/bin/chromium"
         chromedriver_path = "/usr/bin/chromedriver"
-
+        
         options = webdriver.ChromeOptions()
         options.binary_location = chrome_path  # Ensure the correct binary location
         options.add_argument("--headless")
