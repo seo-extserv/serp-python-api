@@ -3,5 +3,3 @@ uvicorn
 selenium
 httpx
 pydantic
-logging
-subprocess
